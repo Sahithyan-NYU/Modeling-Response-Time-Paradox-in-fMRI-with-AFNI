@@ -1,0 +1,34 @@
+#!/bin/csh
+
+# ---------------------------------------------------------------------------------
+# Author: Sahithyan (emotion and cognition lab, IISc; Hatley Lab, NYU)
+# Date: 2025-02-14
+# Description:
+# This script is designed for processing data related to a project located at /media/cogemolab/home2/PCR. 
+# The script loops over a range of subjects (from 501 to 550) and for each subject:
+# 1. It navigates to the directory containing regressor data for the subject.
+# 2. It then uses the '1dMarry' command to combine two files:
+#    - M_TaskOnset_PCR<subj>.txt (task onset file for the subject)
+#    - M_RT_Regressor_PCR<subj>.txt (reaction time regressor for the subject)
+# 3. The combined output is saved as a new file: M_TaskOnset_RT_married_PCR<subj>.
+# ---------------------------------------------------------------------------------
+
+# Set the project directory path
+set proj_path=/media/cogemolab/home2/PCR
+
+# "PCR" is the subject code prefix that will be used to construct file names for each subject
+
+# Loop through subjects from 501 to 550
+foreach subj ( `seq 501 1 550` )
+
+    # Print the subject number to the console
+    echo $subj
+
+    # Change directory to the specific subject's directory containing the regressor files
+    cd $proj_path/data/individual/PCR"$subj"/regressors/activation/mainTask
+
+    # Use the 1dMarry command to combine the task onset and reaction time regressor files for each subject
+    # The resulting file is saved with the name M_TaskOnset_RT_married_PCR<subj>
+    1dMarry M_TaskOnset_PCR"$subj".txt M_RT_Regressor_PCR"$subj".txt > M_TaskOnset_RT_married_PCR"$subj"
+
+end

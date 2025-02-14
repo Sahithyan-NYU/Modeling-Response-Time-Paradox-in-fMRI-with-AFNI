@@ -1,0 +1,85 @@
+#!/bin/csh
+
+# ---------------------------------------------------------------------------------
+# Author: Sahithyan (emotion and cognition lab, IISc; Hatley Lab, NYU)
+# Date: 2025-02-14
+# Description:
+# This script performs a multiple regression analysis on the functional MRI data of an individual subject. 
+# It uses the 3dDeconvolve tool to model the relationship between the fMRI data and several stimulus events, 
+# for this example consider three conditions: positive, neutral, negative; we will also use the task error onsets, as well as a reaction time regressor.
+# The script also handles motion parameters and censoring, and outputs multiple files:
+# 1. Betas for the deconvolution result.
+# 2. X1D matrices of design information.
+# 3. Fitted time series and error time series.
+# ---------------------------------------------------------------------------------
+
+# Set the paths for the project and template directories
+set proj_path=/media/cogemolab/home2/PCR
+set temp_path=/media/cogemolab/home2/templates
+
+# Get the subject identifier passed as an argument
+set subj=$1
+
+# Set the path to the regressor files for the subject
+set reg_path=$proj_path/data/individual/PCR"$subj"/regressors/activation/mainTask
+
+# Create a directory for storing the regression results if it doesn't already exist
+mkdir -p $proj_path/data/individual/PCR"$subj"/activation/wholeBrain/mainTask/RT_Regressed
+
+# Change directory to where the output files will be saved
+cd $proj_path/data/individual/PCR"$subj"/activation/wholeBrain/mainTask/RT_Regressed
+
+# Print a message indicating the subject and analysis being run
+echo "Subject $subj ... running multiple regression using 3dDeconvolve:"
+
+# Run the 3dDeconvolve command for multiple regression analysis
+# -overwrite: Overwrites any existing output files
+# -input: The functional MRI data (in MNI space)
+# -mask: The brain mask (in MNI space)
+# -concat: Specifies the concatenation of time points for the analysis 
+# -polort A: Polynomial regression model for detrending
+# -nobout: Suppresses output of beta coefficients for each stimulus
+# -noFDR: Disables False Discovery Rate correction
+# -num_stimts 5: Specifies the number of stimulus time series (5 in this case)
+# -local_times: Uses local time units for stimuli
+# -stim_times: Specifies the onset times for each stimulus (positive, neutral, negative, task error)
+# -stim_file: Specifies the reaction time regressor file
+# -ortvec: Specifies motion parameters to be included as nuisance regressors
+# -censor: Specifies the censoring file for motion correction
+# -cbucket: Specifies the output file for the deconvolution results (betas)
+# -x1D: Specifies the X-matrix output file with design matrix information
+# -xsave: Saves the X-matrix to a file
+# -xjpeg: Saves a JPEG image of the X-matrix design
+# -fitts: Saves the fitted time series
+# -errts: Saves the error time series
+# -tout: Saves the time-to-peak and F-statistics
+# -bucket: Specifies the output file for the regression results
+
+3dDeconvolve \
+    -overwrite \
+    -input $proj_path/data/individual/PCR"$subj"/func/mainTask/PCR"$subj"_M_TR_MNI_3mm_SI.nii.gz \
+    -mask $temp_path/MNI152_T1_3mm_brain_GM_02182017.nii.gz \
+    -concat '1D: 0 186 372 558 744 930' \
+    -polort A \
+    -nobout \
+    -noFDR \
+    -num_stimts 5 \
+    -local_times \
+    -stim_times 1 $reg_path/M_PositiveOnset_PCR"$subj".txt 'GAM(8.6,0.547,1.5)' -stim_label 1 Positive \
+    -stim_times 2 $reg_path/M_NeutralOnset_PCR"$subj".txt 'GAM(8.6,0.547,1.5)' -stim_label 2 Neutral \
+    -stim_times 3 $reg_path/M_NegativeOnset_PCR"$subj".txt 'GAM(8.6,0.547,1.5)' -stim_label 3 Negative \
+    -stim_times 4 $reg_path/M_ErrorTaskOnset_PCR"$subj".txt 'GAM(8.6,0.547,1.5)' -stim_label 4 TaskError \
+    -stim_file 5 $proj_path/data/individual/PCR"$subj"/activation/wholeBrain/mainTask/AM2/RT_regressor_mean_centered_PCR"$subj".1D -stim_label 5 M_RT \
+    -ortvec $proj_path/data/individual/PCR"$subj"/func/mainTask/PCR"$subj"_M_MotionPar.txt'[1..6]' 'MotionParam' \
+    -ortvec $proj_path/data/individual/PCR"$subj"/func/mainTask/PCR"$subj"_M_MotionPar_derv.1D'[1..6]' 'MotionParamDerv' \
+    -censor $proj_path/data/individual/PCR"$subj"/func/mainTask/PCR"$subj"_M_censor.1D \
+    -cbucket ./"PCR"$subj"_M_TR_MNI_3mm_SI_censor_CueDeconvTaskMR_betas_RT.nii.gz" \
+    -x1D ./"PCR"$subj"_M_TR_MNI_3mm_SI_censor_CueDeconvTaskMR_RT.x1D" \
+    -x1D_uncensored ./"PCR"$subj"_M_TR_MNI_3mm_SI_Uncensor_CueDeconvTaskMR_RT.x1D" \
+    -xsave \
+    -xjpeg ./"PCR"$subj"_M_censor_CueDeconvTaskMR_RT.png" \
+    -fitts ./"PCR"$subj"_M_TR_MNI_3mm_SI_censor_CueDeconvTaskMR_fitts_RT.nii.gz" \
+    -errts ./"PCR"$subj"_M_TR_MNI_3mm_SI_censor_CueDeconvTaskMR_errts_RT.nii.gz" \
+    -tout \
+    -bucket ./"PCR"$subj"_M_TR_MNI_3mm_SI_censor_CueDeconvTaskMR_RT.nii.gz"
+
